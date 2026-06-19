@@ -69,6 +69,11 @@ yarn-error.log*
 .vscode/
 *.iml
 
+# cursor / AI editor config (local only)
+AGENTS.md
+CLAUDE.md
+.cursor/
+
 # cursor agent terminal session logs
 /terminals/
 
