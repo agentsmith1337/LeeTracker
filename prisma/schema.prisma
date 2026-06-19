@@ -1,0 +1,68 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  password  String
+  name      String?
+  createdAt DateTime @default(now())
+
+  revisions         Revision[]
+  lecturePlaylists  LecturePlaylist[]
+}
+
+model Revision {
+  id           String         @id @default(cuid())
+  userId       String
+  user         User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  category     RevisionCategory
+  title        String
+  url          String?
+  platform     String?
+  revisionDate String
+  createdAt    DateTime       @default(now())
+
+  @@index([userId, revisionDate])
+  @@index([userId, category])
+}
+
+model LecturePlaylist {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  url       String
+  title     String?
+  sortOrder Int      @default(0)
+  createdAt DateTime @default(now())
+
+  videos LectureVideo[]
+
+  @@index([userId, sortOrder])
+}
+
+model LectureVideo {
+  id            String          @id @default(cuid())
+  playlistId    String
+  playlist      LecturePlaylist @relation(fields: [playlistId], references: [id], onDelete: Cascade)
+  position      Int
+  title         String
+  videoId       String?
+  url           String?
+  thumbnailPath String?
+  watched       Boolean         @default(false)
+
+  @@index([playlistId, position])
+}
+
+enum RevisionCategory {
+  CODING
+  RIDDLE
+  QUANT
+}
