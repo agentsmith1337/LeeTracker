@@ -9,7 +9,14 @@ import {
   useRef,
   useState,
 } from "react";
+import { signOut } from "next-auth/react";
 import type { LecturePlaylist } from "@/types/revision";
+
+async function handleStaleSession(response: Response): Promise<boolean> {
+  if (response.status !== 401) return false;
+  await signOut({ callbackUrl: "/login" });
+  return true;
+}
 
 export function LecturesPage() {
   const [playlists, setPlaylists] = useState<LecturePlaylist[]>([]);
@@ -28,6 +35,10 @@ export function LecturesPage() {
 
   const fetchPlaylists = useCallback(async () => {
     const response = await fetch("/api/lectures");
+    if (await handleStaleSession(response)) {
+      setLoading(false);
+      return;
+    }
     if (response.ok) {
       setPlaylists((await response.json()) as LecturePlaylist[]);
     }
@@ -62,6 +73,8 @@ export function LecturesPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ url: url.trim() }),
       });
+
+      if (await handleStaleSession(response)) return;
 
       const data = await response.json();
       if (!response.ok) {

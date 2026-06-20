@@ -1,11 +1,11 @@
 import fs from "node:fs";
 import path from "node:path";
-import { PrismaBetterSqlite3 } from "@prisma/adapter-better-sqlite3";
+import { PrismaPg } from "@prisma/adapter-pg";
 import { PrismaClient } from "@/generated/prisma/client";
 
 const globalForPrisma = globalThis as unknown as {
   prisma: PrismaClient | undefined;
-  prismaDbPath: string | undefined;
+  prismaDatabaseUrl: string | undefined;
   prismaClientMtime: number | undefined;
 };
 
@@ -21,38 +21,33 @@ function getGeneratedClientMtime(): number {
   }
 }
 
-function getDatabasePath(): string {
-  const envUrl = process.env.DATABASE_URL;
-  if (envUrl?.startsWith("file:")) {
-    const filePath = envUrl.slice("file:".length);
-    if (path.isAbsolute(filePath)) {
-      return filePath;
-    }
-  }
-  return path.join(/* turbopackIgnore: true */ process.cwd(), "dev.db");
-}
-
-function createPrismaClient(dbPath: string) {
-  const adapter = new PrismaBetterSqlite3({
-    url: `file:${dbPath}`,
-  });
+function createPrismaClient(connectionString: string) {
+  const adapter = new PrismaPg({ connectionString });
   return new PrismaClient({ adapter });
 }
 
-const dbPath = getDatabasePath();
+function getDatabaseUrl(): string {
+  const connectionString = process.env.DATABASE_URL;
+  if (!connectionString) {
+    throw new Error("DATABASE_URL is not set");
+  }
+  return connectionString;
+}
+
+const databaseUrl = getDatabaseUrl();
 const clientMtime = getGeneratedClientMtime();
 
 const hasFreshClient =
-  globalForPrisma.prismaDbPath === dbPath &&
+  globalForPrisma.prismaDatabaseUrl === databaseUrl &&
   globalForPrisma.prismaClientMtime === clientMtime &&
   globalForPrisma.prisma;
 
 export const prisma = hasFreshClient
   ? globalForPrisma.prisma!
-  : createPrismaClient(dbPath);
+  : createPrismaClient(databaseUrl);
 
 if (process.env.NODE_ENV !== "production") {
   globalForPrisma.prisma = prisma;
-  globalForPrisma.prismaDbPath = dbPath;
+  globalForPrisma.prismaDatabaseUrl = databaseUrl;
   globalForPrisma.prismaClientMtime = clientMtime;
 }
